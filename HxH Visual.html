@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Actividades JSON</title>
+    <style>
+        /* Estilos generales para la página */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+
+        /* Contenedor principal para centrar el contenido */
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #0056b3;
+            text-align: center;
+        }
+
+        /* Estilo para los botones y el input de archivo */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        input[type="file"] {
+            border: 1px solid #ccc;
+            padding: 8px;
+            border-radius: 5px;
+        }
+
+        /* Estilo para la tabla de resultados */
+        #tableContainer {
+            margin-top: 20px;
+            overflow-x: auto; /* Permite desplazamiento horizontal si la tabla es muy ancha */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse; /* Une los bordes de las celdas */
+        }
+
+        th, td {
+            border: 1px solid #dddddd;
+            padding: 12px;
+            text-align: left;
+            vertical-align: top; /* Alinea el contenido en la parte superior */
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        
+        /* Estilo para las filas impares para mejor legibilidad */
+        tbody tr:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Visualizador de Actividades JSON</h1>
+
+        <div class="controls">
+            <input type="file" id="jsonFileInput" accept=".json">
+            <button id="exportBtn" disabled>Exportar a CSV</button>
+        </div>
+
+        <div id="tableContainer">
+            <p style="text-align: center;">Por favor, selecciona un archivo JSON para visualizar los datos.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- SECCIÓN DE LÓGICA (JAVASCRIPT) ---
+
+        // 1. OBTENER REFERENCIAS A LOS ELEMENTOS DEL HTML
+        const jsonFileInput = document.getElementById('jsonFileInput');
+        const tableContainer = document.getElementById('tableContainer');
+        const exportBtn = document.getElementById('exportBtn');
+        
+        // Variable para guardar los datos procesados y agrupados
+        let groupedData = {};
+        
+        // --- LÓGICA DE DETECCIÓN DE DATOS EN LA URL ---
+
+        // Función para decodificar los datos de la URL
+        function getJsonDataFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const encodedData = urlParams.get('data');
+            if (encodedData) {
+                try {
+                    console.log("Datos codificados encontrados en la URL. Procesando...");
+                    // Decodificar Base64 y JSON
+                    const decodedData = decodeURIComponent(escape(atob(encodedData)));
+                    const jsonData = JSON.parse(decodedData);
+                    console.log("Datos JSON decodificados con éxito.");
+                    return jsonData;
+                } catch (e) {
+                    console.error("Error al decodificar los datos de la URL:", e);
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        // --- LÓGICA PARA INICIAR CON LOS DATOS DE LA URL ---
+        const initialData = getJsonDataFromUrl();
+        if (initialData) {
+            tableContainer.innerHTML = '<p style="text-align: center;">Cargando datos...</p>';
+            processAndGroupData(initialData);
+            renderTable();
+            exportBtn.disabled = false;
+            jsonFileInput.style.display = 'none'; // Ocultar el input si hay datos
+        }
+
+        // 2. EVENTO PARA LEER EL ARCHIVO CUANDO EL USUARIO LO SELECCIONA
+        jsonFileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    processAndGroupData(jsonData);
+                    renderTable();
+                    exportBtn.disabled = false;
+                } catch (error) {
+                    tableContainer.innerHTML = `<p style="color: red; text-align: center;">Error: El archivo seleccionado no es un JSON válido.</p>`;
+                    exportBtn.disabled = true;
+                }
+            };
+
+            reader.readAsText(file);
+        }
+        
+        // 3. FUNCIÓN PARA PROCESAR Y AGRUPAR LOS DATOS
+        function processAndGroupData(data) {
+            groupedData = {}; 
+            
+            data.forEach(item => {
+                const date = new Date(item.timestamp);
+                const hour = date.getHours();
+                const commentParts = [item.maquina, item.linea, item.accion, item.text].filter(Boolean);
+                const formattedComment = commentParts.join(' - ');
+
+                if (!groupedData[hour]) {
+                    groupedData[hour] = [];
+                }
+                
+                // **CAMBIO CLAVE 1:** En lugar de guardar solo el comentario,
+                // guardamos un objeto con el timestamp y el comentario.
+                // Esto nos permitirá ordenar más tarde.
+                groupedData[hour].push({
+                    timestamp: item.timestamp,
+                    comment: formattedComment
+                });
+            });
+        }
+        
+        // 4. FUNCIÓN PARA DIBUJAR LA TABLA EN LA PÁGINA
+        function renderTable() {
+            tableContainer.innerHTML = '';
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>HxH</th>
+                        <th>Actividades</th>
+                    </tr>
+                </thead>
+            `;
+            const tbody = document.createElement('tbody');
+
+            const sortedHours = Object.keys(groupedData).map(Number).sort((a, b) => a - b);
+
+            sortedHours.forEach(hour => {
+                const row = document.createElement('tr');
+                const nextHour = hour + 1;
+                const timeSlot = `${String(hour).padStart(2, '0')}:00 - ${String(nextHour).padStart(2, '0')}:00`;
+                
+                // **CAMBIO CLAVE 2:** Antes de mostrar las actividades,
+                // las ordenamos usando el timestamp que guardamos.
+                const sortedActivities = groupedData[hour]
+                    .sort((a, b) => a.timestamp - b.timestamp)
+                    .map(item => item.comment) // Extraemos solo el texto del comentario
+                    .join('<br>'); // Unimos con saltos de línea para la tabla
+                
+                row.innerHTML = `
+                    <td>${timeSlot}</td>
+                    <td>${sortedActivities}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+        }
+        
+        // 5. EVENTO Y FUNCIÓN PARA EXPORTAR LOS DATOS A CSV
+        exportBtn.addEventListener('click', exportToCsv);
+
+        function exportToCsv() {
+            let csvContent = '"HxH","Actividades"\n';
+            const sortedHours = Object.keys(groupedData).map(Number).sort((a, b) => a - b);
+
+            sortedHours.forEach(hour => {
+                const nextHour = hour + 1;
+                const timeSlot = `${String(hour).padStart(2, '0')}:00 - ${String(nextHour).padStart(2, '0')}:00`;
+                
+                // **CAMBIO CLAVE 3:** También ordenamos aquí antes de generar el CSV
+                // para que el archivo exportado también esté en el orden correcto.
+                const activities = groupedData[hour]
+                    .sort((a, b) => a.timestamp - b.timestamp)
+                    .map(item => item.comment.replace(/"/g, '""')) // Escapamos comillas
+                    .join('\n'); // Unimos con saltos de línea reales para el CSV
+                
+                csvContent += `"${timeSlot}","${activities}"\n`;
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'reporte_actividades_ordenado.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Registro por Turnos</title>
+<style>
+  :root{--primary:#0f62fe;--muted:#6b7280;--card:#eef3ff;}
+  body{font-family:Arial, sans-serif;margin:20px;background:#f6f7fb;color:#111;}
+  header{background:var(--primary);color:white;padding:15px;border-radius:8px;}
+  h1{margin:0;font-size:18px;}
+  .controls{margin:15px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .btn{background:var(--primary);color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;}
+  .btn.alt{background:#22c55e;}
+  .btn.warn{background:#f59e0b;}
+  .btn.danger{background:#ef4444;}
+  textarea, select, input[type="time"], input[type="file"], input[type="date"], input[type="text"]{
+    padding:6px;border-radius:6px;border:1px solid #ccc; font-family:Arial, sans-serif;
+  }
+  textarea{width:100%;min-height:64px;}
+  .turno{background:white;padding:12px;margin:10px 0;border-radius:8px;}
+  .comment{background:var(--card);padding:10px;margin:6px 0;border-radius:6px;display:flex;justify-content:space-between;align-items:flex-start;font-size:14px;}
+  .comment-left{flex:1;}
+  .comment .hora{color:var(--muted);font-size:12px;margin-left:6px;display:none;}
+  .comment .hora.visible{display:inline;}
+  .info{font-size:12px;color:#374151;margin-bottom:6px;display:block;}
+  .hora-block{margin:8px 0;font-weight:bold;color:#374151;}
+  .del-btn{background:#ef4444;color:white;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;}
+  #accionOtro{display:none;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Registro de actividades por Turno</h1>
+</header>
+
+<div class="controls">
+  <label>Fecha: <input id="datePicker" type="date"></label>
+  <label>Turno:
+    <select id="turnoSelector">
+      <option value="all">Todos</option>
+      <option value="1">Turno 1</option>
+      <option value="2">Turno 2</option>
+      <option value="3">Turno 3</option>
+    </select>
+  </label>
+</div>
+
+<div class="controls">
+  <label>Piso:
+    <select id="selectPiso">
+      <option value="">N/A</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+    </select>
+  </label>
+  <label>Máquina:
+    <select id="selectMaquina">
+      <option value="">N/A</option>
+      <option value="PreAOI">PreAOI</option>
+      <option value="PAOI">PAOI</option>
+      <option value="DAOI">DAOI</option>
+      <option value="SPI">SPI</option>
+      <option value="AOI">AOI</option>
+      <option value="5DX">5DX</option>
+    </select>
+  </label>
+  <label>Línea:
+    <select id="selectLinea">
+      <option value="">N/A</option>
+    </select>
+  </label>
+  <label>Acción:
+    <select id="selectAccion">
+      <option value="">N/A</option>
+      <option value="Cambio de modelo">Cambio de modelo</option>
+      <option value="Cambio de lado">Cambio de lado</option>
+      <option value="Tarjeta atorada">Tarjeta atorada</option>
+      <option value="Debug">Debug</option>
+      <option value="Problema de flujo">Problema de flujo</option>
+      <option value="Se valida Stencil">Se valida Stencil</option>
+      <option value="CheckList">CheckList</option>
+      <option value="Máquina fallando">Máquina fallando</option>
+      <option value="Máquina funcionando">Máquina funcionando</option>
+      <option value="Otro">Otro</option>
+    </select>
+  </label>
+  <input type="text" id="accionOtro" placeholder="Especificar acción...">
+</div>
+
+<div class="controls">
+  <textarea id="commentText" placeholder="Escribe tu comentario aquí..."></textarea>
+</div>
+
+<div class="controls">
+  <button id="salidaBtn" class="btn warn">Salida comedor</button>
+  <button id="regresoBtn" class="btn alt">Regreso comedor</button>
+  <button id="exportBtn" class="btn">Exportar JSON</button>
+  <button id="importBtn" class="btn alt">Importar JSON</button>
+  <input type="file" id="importFile" accept=".json" style="display:none;">
+  <button id="toggleHoraBtn" class="btn">Mostrar horas</button>
+  <button id="clearAllBtn" class="btn danger">Limpiar todo</button>
+</div>
+
+<div class="controls">
+  <label>Tipo de hora:
+    <select id="horaTipo">
+      <option value="actual">Hora actual</option>
+      <option value="retro">Hora retroactiva</option>
+    </select>
+  </label>
+  <label>Hora retroactiva:
+    <input id="retroTime" type="time" disabled>
+  </label>
+  <button id="addRetroBtn" class="btn">Añadir</button>
+</div>
+
+<div id="turnosContainer"></div>
+
+<script>
+(function(){
+  const datePicker=document.getElementById("datePicker");
+  const turnoSelector=document.getElementById("turnoSelector");
+  const turnosContainer=document.getElementById("turnosContainer");
+  const commentText=document.getElementById("commentText");
+  const salidaBtn=document.getElementById("salidaBtn");
+  const regresoBtn=document.getElementById("regresoBtn");
+  const exportBtn=document.getElementById("exportBtn");
+  const importBtn=document.getElementById("importBtn");
+  const importFile=document.getElementById("importFile");
+  const clearAllBtn=document.getElementById("clearAllBtn");
+  const addRetroBtn=document.getElementById("addRetroBtn");
+  const retroTime=document.getElementById("retroTime");
+  const horaTipo=document.getElementById("horaTipo");
+  const selectPiso=document.getElementById("selectPiso");
+  const selectMaquina=document.getElementById("selectMaquina");
+  const selectLinea=document.getElementById("selectLinea");
+  const selectAccion=document.getElementById("selectAccion");
+  const accionOtro=document.getElementById("accionOtro");
+  const toggleHoraBtn=document.getElementById("toggleHoraBtn");
+
+  const prefix="registro_turnos_";
+  let mostrarHoras=false;
+
+  function isoDate(d){return d.toISOString().slice(0,10);}
+  datePicker.value=isoDate(new Date());
+  horaTipo.onchange=function(){ retroTime.disabled = horaTipo.value!=="retro"; }
+
+  function storageKey(dateStr){return prefix+dateStr;}
+  function loadData(dateStr){return JSON.parse(localStorage.getItem(storageKey(dateStr))||"[]");}
+  function saveData(dateStr,data){localStorage.setItem(storageKey(dateStr),JSON.stringify(data));}
+
+  function getTurno(dateObj){
+    const h=dateObj.getHours(), m=dateObj.getMinutes();
+    if(h>=6 && h<14) return 1;
+    if(h>=14 && (h<21 || (h===21 && m<=30))) return 2;
+    return 3;
+  }
+
+  // Dependencia Piso -> Linea
+  selectPiso.onchange=function(){
+    selectLinea.innerHTML="";
+    const opt=document.createElement("option");
+    opt.value=""; opt.textContent="N/A"; 
+    selectLinea.appendChild(opt);
+    if(selectPiso.value==="1"){
+      ["17","18","19"].forEach(l=>{
+        const o=document.createElement("option");
+        o.value=l; o.textContent=l;
+        selectLinea.appendChild(o);
+      });
+    }
+    else if(selectPiso.value==="2"){
+      ["22","23"].forEach(l=>{
+        const o=document.createElement("option");
+        o.value=l; o.textContent=l;
+        selectLinea.appendChild(o);
+      });
+    }
+  };
+
+  // Mostrar input si accion=Otro
+  selectAccion.onchange=function(){
+    accionOtro.style.display = (selectAccion.value==="Otro") ? "inline-block" : "none";
+  };
+
+  function guardar(texto, fechaHora, omitirInfo=false){
+    const dateStr=datePicker.value;
+    const data=loadData(dateStr);
+    const now=fechaHora || new Date();
+    const turno=getTurno(now);
+    let accionVal = (selectAccion.value==="Otro") ? accionOtro.value.trim() : selectAccion.value;
+    data.push({
+      id:Date.now()+Math.random(),
+      text:texto,
+      turno:turno,
+      timestamp:now.getTime(),
+      piso: omitirInfo?"":selectPiso.value,
+      maquina: omitirInfo?"":selectMaquina.value,
+      linea: omitirInfo?"":selectLinea.value,
+      accion: omitirInfo?"":accionVal
+    });
+    saveData(dateStr,data);
+    render();
+  }
+
+  function render(){
+    const dateStr=datePicker.value;
+    const data=loadData(dateStr).sort((a,b)=>a.timestamp-b.timestamp);
+    const filterTurno=turnoSelector.value;
+    const turnosToShow = filterTurno==="all"?[1,2,3]:[parseInt(filterTurno)];
+    turnosContainer.innerHTML="";
+    turnosToShow.forEach(t=>{
+      const div=document.createElement("div");
+      div.className="turno";
+      div.innerHTML=`<strong>Turno ${t}</strong>`;
+      const grupo=data.filter(c=>c.turno===t);
+      if(grupo.length===0){ div.innerHTML+="<div>(sin actividad)</div>"; }
+      else{
+        const bloques={};
+        grupo.forEach(c=>{
+          const d=new Date(c.timestamp);
+          const h=d.getHours();
+          const bloque=`${String(h).padStart(2,"0")}:00 - ${String(h+1).padStart(2,"0")}:00`;
+          if(!bloques[bloque]) bloques[bloque]=[];
+          bloques[bloque].push(c);
+        });
+        Object.keys(bloques).sort().forEach(b=>{
+          const sep=document.createElement("div");
+          sep.className="hora-block";
+          sep.textContent=b;
+          div.appendChild(sep);
+          bloques[b].forEach(c=>{
+            const cdiv=document.createElement("div");
+            cdiv.className="comment";
+            const hora=new Date(c.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            let info="";
+            if(c.piso || c.maquina || c.linea || c.accion){
+              info=`<span class="info">[Piso:${c.piso||'N/A'} | Máq:${c.maquina||'N/A'} | L:${c.linea||'N/A'} | Acc:${c.accion||'N/A'}]</span>`;
+            }
+            cdiv.innerHTML=`<div class="comment-left">
+                               ${info}${c.text}
+                               <span class="hora ${mostrarHoras?"visible":""}"> (${hora})</span>
+                             </div>
+                             <button class="del-btn" onclick="window.__del('${dateStr}',${c.id})">❌</button>`;
+            div.appendChild(cdiv);
+          });
+        });
+      }
+      turnosContainer.appendChild(div);
+    });
+  }
+
+  salidaBtn.onclick=function(){guardar("Salida a comedor", null, true);};
+  regresoBtn.onclick=function(){guardar("Regreso de comedor", null, true);};
+
+  addRetroBtn.onclick=function(){
+    let txt=commentText.value.trim();
+    let fechaHora;
+    if(horaTipo.value==="actual"){
+      fechaHora=new Date();
+    }else{
+      if(!retroTime.value){alert("Selecciona hora retroactiva"); return;}
+      const [h,m]=retroTime.value.split(":").map(Number);
+      fechaHora=new Date(datePicker.value+"T00:00:00");
+      fechaHora.setHours(h,m);
+    }
+    guardar(txt, fechaHora, false);
+    commentText.value="";
+    retroTime.value="";
+  };
+
+  exportBtn.onclick=function(){
+    const dateStr=datePicker.value;
+    const data=loadData(dateStr);
+    if(!data.length){alert("No hay datos para exportar"); return;}
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=`registro_${dateStr}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  importBtn.onclick=function(){ importFile.click(); };
+  importFile.onchange=function(e){
+    const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      try{const data=JSON.parse(ev.target.result); saveData(datePicker.value,data); render();}
+      catch(err){alert("Archivo JSON inválido");}
+    };
+    reader.readAsText(file); importFile.value="";
+  };
+
+  clearAllBtn.onclick=function(){
+    if(confirm("¿Seguro que quieres borrar todo el registro de este día?")){
+      localStorage.removeItem(storageKey(datePicker.value)); render();
+    }
+  };
+
+  toggleHoraBtn.onclick=function(){
+    mostrarHoras=!mostrarHoras;
+    toggleHoraBtn.textContent=mostrarHoras?"Ocultar horas":"Mostrar horas";
+    render();
+  };
+
+  window.__del=function(dateStr,id){
+    const data=loadData(dateStr).filter(c=>c.id!==id);
+    saveData(dateStr,data); render();
+  };
+
+  datePicker.onchange=render;
+  turnoSelector.onchange=render;
+  render();
+})();
+</script>
+</body>
+</html>
