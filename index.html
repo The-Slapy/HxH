@@ -82,6 +82,7 @@
       <option value="CheckList">CheckList</option>
       <option value="Máquina fallando">Máquina fallando</option>
       <option value="Máquina funcionando">Máquina funcionando</option>
+      <option value="Se pasan tarjetas golden">Golden</option>
       <option value="Otro">Otro</option>
     </select>
   </label>
@@ -164,7 +165,7 @@
     opt.value=""; opt.textContent="N/A"; 
     selectLinea.appendChild(opt);
     if(selectPiso.value==="1"){
-      ["17","18","19"].forEach(l=>{
+      ["17A","17B","18","19"].forEach(l=>{
         const o=document.createElement("option");
         o.value=l; o.textContent=l;
         selectLinea.appendChild(o);
