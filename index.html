@@ -6,7 +6,8 @@
 <title>Registro por Turnos</title>
 <style>
   :root{--primary:#0f62fe;--muted:#6b7280;--card:#eef3ff;}
-  body{font-family:Arial, sans-serif;margin:20px;background:#f6f7fb;color:#111;}
+  /* MODIFICACIÓN: Se ajusta el margen del body. */
+  body{font-family:Arial, sans-serif;margin:20px 20px 0 20px;background:#f6f7fb;color:#111;}
   header{background:var(--primary);color:white;padding:15px;border-radius:8px;}
   h1{margin:0;font-size:18px;}
   .controls{margin:15px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
@@ -15,7 +16,8 @@
   .btn.warn{background:#f59e0b;}
   .btn.danger{background:#ef4444;}
   textarea, select, input[type="time"], input[type="file"], input[type="date"], input[type="text"]{
-    padding:6px;border-radius:6px;border:1px solid #ccc; font-family:Arial, sans-serif;
+    padding:6px;border-radius:6px;border:1px solid #ccc;
+    font-family:Arial, sans-serif;
   }
   textarea{width:100%;min-height:64px;}
   .turno{background:white;padding:12px;margin:10px 0;border-radius:8px;}
@@ -27,6 +29,13 @@
   .hora-block{margin:8px 0;font-weight:bold;color:#374151;}
   .del-btn{background:#ef4444;color:white;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;}
   #accionOtro{display:none;}
+  /* NUEVO ESTILO: Contenedor deslizable */
+  #turnosContainer{
+    max-height: calc(100vh - 40px - 210px); /* 100% de la ventana - margen superior/inferior - altura aproximada de controles fijos */
+    overflow-y: auto; /* Permite el scroll vertical si el contenido excede el max-height */
+    margin-top: 20px;
+    padding-bottom: 20px; /* Espacio para que el último turno no se pegue al borde inferior */
+  }
 </style>
 </head>
 <body>
@@ -50,8 +59,8 @@
   <label>Piso:
     <select id="selectPiso">
       <option value="">N/A</option>
-      <option value="P1">1</option>
-      <option value="P2">2</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
     </select>
   </label>
   <label>Máquina:
@@ -100,6 +109,7 @@
   <button id="salidaBtn" class="btn warn">Salida comedor</button>
   <button id="regresoBtn" class="btn alt">Regreso comedor</button>
   <button id="exportBtn" class="btn">Exportar JSON</button>
+  <button id="exportCsvBtn" class="btn alt">Exportar CSV</button> 
   <button id="importBtn" class="btn alt">Importar JSON</button>
   <input type="file" id="importFile" accept=".json" style="display:none;">
   <button id="toggleHoraBtn" class="btn">Mostrar horas</button>
@@ -130,6 +140,8 @@
   const salidaBtn=document.getElementById("salidaBtn");
   const regresoBtn=document.getElementById("regresoBtn");
   const exportBtn=document.getElementById("exportBtn");
+  // NUEVA CONSTANTE: Botón Exportar CSV
+  const exportCsvBtn=document.getElementById("exportCsvBtn");
   const importBtn=document.getElementById("importBtn");
   const importFile=document.getElementById("importFile");
   const clearAllBtn=document.getElementById("clearAllBtn");
@@ -145,10 +157,10 @@
 
   const prefix="registro_turnos_";
   let mostrarHoras=false;
-
   function isoDate(d){return d.toISOString().slice(0,10);}
   datePicker.value=isoDate(new Date());
-  horaTipo.onchange=function(){ retroTime.disabled = horaTipo.value!=="retro"; }
+  horaTipo.onchange=function(){ retroTime.disabled = horaTipo.value!=="retro";
+  }
 
   function storageKey(dateStr){return prefix+dateStr;}
   function loadData(dateStr){return JSON.parse(localStorage.getItem(storageKey(dateStr))||"[]");}
@@ -226,6 +238,7 @@
           const d=new Date(c.timestamp);
           const h=d.getHours();
           const bloque=`${String(h).padStart(2,"0")}:00 - ${String(h+1).padStart(2,"0")}:00`;
+     
           if(!bloques[bloque]) bloques[bloque]=[];
           bloques[bloque].push(c);
         });
@@ -236,16 +249,19 @@
           div.appendChild(sep);
           bloques[b].forEach(c=>{
             const cdiv=document.createElement("div");
+    
             cdiv.className="comment";
             const hora=new Date(c.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
             let info="";
             if(c.piso || c.maquina || c.linea || c.accion){
-              info=`<span class="info">[Piso:${c.piso||'N/A'} | Máq:${c.maquina||'N/A'} | L:${c.linea||'N/A'} | Acc:${c.accion||'N/A'}]</span>`;
+              info=`<span class="info">[Piso:${c.piso||'N/A'} |
+Máq:${c.maquina||'N/A'} | L:${c.linea||'N/A'} | Acc:${c.accion||'N/A'}]</span>`;
             }
             cdiv.innerHTML=`<div class="comment-left">
                                ${info}${c.text}
                                <span class="hora ${mostrarHoras?"visible":""}"> (${hora})</span>
-                             </div>
+                 
+                            </div>
                              <button class="del-btn" onclick="window.__del('${dateStr}',${c.id})">❌</button>`;
             div.appendChild(cdiv);
           });
@@ -264,7 +280,8 @@
     if(horaTipo.value==="actual"){
       fechaHora=new Date();
     }else{
-      if(!retroTime.value){alert("Selecciona hora retroactiva"); return;}
+      if(!retroTime.value){alert("Selecciona hora retroactiva");
+      return;}
       const [h,m]=retroTime.value.split(":").map(Number);
       fechaHora=new Date(datePicker.value+"T00:00:00");
       fechaHora.setHours(h,m);
@@ -277,7 +294,8 @@
   exportBtn.onclick=function(){
     const dateStr=datePicker.value;
     const data=loadData(dateStr);
-    if(!data.length){alert("No hay datos para exportar"); return;}
+    if(!data.length){alert("No hay datos para exportar");
+    return;}
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
@@ -286,20 +304,66 @@
     URL.revokeObjectURL(url);
   };
 
-  importBtn.onclick=function(){ importFile.click(); };
+  // NUEVA FUNCIÓN: Exportación a CSV
+  exportCsvBtn.onclick=function(){
+    const dateStr=datePicker.value;
+    const data=loadData(dateStr);
+    if(!data.length){alert("No hay datos para exportar"); return;}
+
+    // Encabezados del CSV
+    const headers = ["Fecha","Hora","Turno","Piso","Maquina","Linea","Accion","Comentario"];
+    
+    // Mapear los datos al formato CSV
+    const csvContent = data.map(item => {
+        const d = new Date(item.timestamp);
+        // Formatear la fecha y hora
+        const datePart = d.toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        const timePart = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+        // Escapar comillas dobles y asegurarse de que el texto no contenga comas que rompan el CSV
+        const escape = (text) => `"${String(text).replace(/"/g, '""')}"`;
+
+        return [
+            escape(datePart),
+            escape(timePart),
+            escape(item.turno),
+            escape(item.piso || 'N/A'),
+            escape(item.maquina || 'N/A'),
+            escape(item.linea || 'N/A'),
+            escape(item.accion || 'N/A'),
+            escape(item.text)
+        ].join(',');
+    }).join('\n');
+
+    // Combinar encabezados y contenido
+    const csv = headers.join(',') + '\n' + csvContent;
+
+    // Crear y descargar el archivo Blob
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=`registro_${dateStr}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  // FIN NUEVA FUNCIÓN CSV
+
+  importBtn.onclick=function(){ importFile.click();
+  };
   importFile.onchange=function(e){
     const file=e.target.files[0]; if(!file) return;
     const reader=new FileReader();
     reader.onload=function(ev){
-      try{const data=JSON.parse(ev.target.result); saveData(datePicker.value,data); render();}
+      try{const data=JSON.parse(ev.target.result);
+      saveData(datePicker.value,data); render();}
       catch(err){alert("Archivo JSON inválido");}
     };
     reader.readAsText(file); importFile.value="";
   };
-
   clearAllBtn.onclick=function(){
     if(confirm("¿Seguro que quieres borrar todo el registro de este día?")){
-      localStorage.removeItem(storageKey(datePicker.value)); render();
+      localStorage.removeItem(storageKey(datePicker.value));
+      render();
     }
   };
 
