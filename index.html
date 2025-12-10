@@ -3,11 +3,41 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Registro por Turnos</title>
+<title>Registro y Reporte HxH</title>
 <style>
   :root{--primary:#0f62fe;--muted:#6b7280;--card:#eef3ff;}
-  /* MODIFICACIÓN: Se ajusta el margen del body. */
-  body{font-family:Arial, sans-serif;margin:20px 20px 0 20px;background:#f6f7fb;color:#111;}
+  
+  body{font-family: 'Segoe UI', Arial, sans-serif; margin:0; background:#f6f7fb; color:#111;}
+  
+  /* ESTILOS DE PESTAÑAS (TABS) */
+  .tab-nav {
+      background: #fff;
+      padding: 0 20px;
+      border-bottom: 1px solid #ccc;
+      display: flex;
+      gap: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  }
+  .tab-btn {
+      padding: 15px 20px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-weight: bold;
+      color: #666;
+      font-size: 16px;
+      transition: all 0.3s;
+  }
+  .tab-btn:hover { background: #f0f0f0; }
+  .tab-btn.active {
+      border-bottom: 3px solid var(--primary);
+      color: var(--primary);
+  }
+  .tab-content { display: none; padding: 20px; }
+  .tab-content.active { display: block; }
+
+  /* ESTILOS ORIGINALES DEL REGISTRO */
   header{background:var(--primary);color:white;padding:15px;border-radius:8px;}
   h1{margin:0;font-size:18px;}
   .controls{margin:15px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
@@ -15,12 +45,14 @@
   .btn.alt{background:#22c55e;}
   .btn.warn{background:#f59e0b;}
   .btn.danger{background:#ef4444;}
+  .btn.purple{background:#8b5cf6;} /* Nuevo botón reporte */
+  
   textarea, select, input[type="time"], input[type="file"], input[type="date"], input[type="text"]{
-    padding:6px;border-radius:6px;border:1px solid #ccc;
-    font-family:Arial, sans-serif;
+    padding:6px;border-radius:6px;border:1px solid #ccc; font-family:Arial, sans-serif;
   }
-  textarea{width:100%;min-height:64px;}
-  .turno{background:white;padding:12px;margin:10px 0;border-radius:8px;}
+  textarea{width:100%;min-height:64px; box-sizing: border-box;}
+  
+  .turno{background:white;padding:12px;margin:10px 0;border-radius:8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);}
   .comment{background:var(--card);padding:10px;margin:6px 0;border-radius:6px;display:flex;justify-content:space-between;align-items:flex-start;font-size:14px;}
   .comment-left{flex:1;}
   .comment .hora{color:var(--muted);font-size:12px;margin-left:6px;display:none;}
@@ -29,109 +61,350 @@
   .hora-block{margin:8px 0;font-weight:bold;color:#374151;}
   .del-btn{background:#ef4444;color:white;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;}
   #accionOtro{display:none;}
-  /* NUEVO ESTILO: Contenedor deslizable */
+  
   #turnosContainer{
-    max-height: calc(100vh - 40px - 210px); /* 100% de la ventana - margen superior/inferior - altura aproximada de controles fijos */
-    overflow-y: auto; /* Permite el scroll vertical si el contenido excede el max-height */
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
     margin-top: 20px;
-    padding-bottom: 20px; /* Espacio para que el último turno no se pegue al borde inferior */
+    padding-bottom: 20px;
   }
+
+  /* ESTILOS DEL REPORTE HxH */
+  .hxh-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+  .hxh-title { text-align: center; color: #2c3e50; margin-top: 0; }
+  .file-upload-wrapper {
+      text-align: center;
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px dashed #007bff;
+      border-radius: 10px;
+      background-color: #f0f8ff;
+  }
+  #btn-copiar {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      transition: background 0.3s;
+  }
+  #btn-copiar:hover { background-color: #218838; }
+  .hora-bloque {
+      margin-bottom: 20px;
+      background-color: #fff;
+      border: 1px solid #e1e4e8;
+      border-radius: 6px;
+      overflow: hidden;
+  }
+  .hora-titulo {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 15px;
+      font-weight: bold;
+      font-size: 1.1em;
+  }
+  .actividad-lista { padding: 0; margin: 0; list-style: none; }
+  .actividad-item {
+      padding: 10px 15px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: baseline;
+  }
+  .actividad-item:last-child { border-bottom: none; }
+  .tag {
+      background-color: #e9ecef;
+      color: #495057;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-weight: bold;
+      margin-right: 8px;
+      white-space: nowrap;
+  }
+  .error-msg { color: #d9534f; font-weight: bold; text-align: center; }
 </style>
 </head>
 <body>
-<header>
-  <h1>Registro de actividades por Turno</h1>
-</header>
 
-<div class="controls">
-  <label>Fecha: <input id="datePicker" type="date"></label>
-  <label>Turno:
-    <select id="turnoSelector">
-      <option value="all">Todos</option>
-      <option value="1">Turno 1</option>
-      <option value="2">Turno 2</option>
-      <option value="3">Turno 3</option>
-    </select>
-  </label>
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('registro')">📝 Registro de Turnos</button>
+  <button class="tab-btn" onclick="switchTab('reporte')">📊 Reporte HxH</button>
+</nav>
+
+<div id="tab-registro" class="tab-content active">
+  <header>
+    <h1>Registro de actividades por Turno</h1>
+  </header>
+
+  <div class="controls">
+    <label>Fecha: <input id="datePicker" type="date"></label>
+    <label>Turno:
+      <select id="turnoSelector">
+        <option value="all">Todos</option>
+        <option value="1">Turno 1</option>
+        <option value="2">Turno 2</option>
+        <option value="3">Turno 3</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="controls">
+    <label>Piso:
+      <select id="selectPiso">
+        <option value="">N/A</option>
+        <option value="P1">1</option>
+        <option value="P2">2</option>
+      </select>
+    </label>
+    <label>Máquina:
+      <select id="selectMaquina">
+        <option value="">N/A</option>
+        <option value="PreAOI">PreAOI</option>
+        <option value="PAOI">PAOI</option>
+        <option value="DAOI">DAOI</option>
+        <option value="SPI">SPI</option>
+        <option value="AOI">AOI</option>
+        <option value="5DX">5DX</option>
+      </select>
+    </label>
+    <label>Línea:
+      <select id="selectLinea">
+        <option value="">N/A</option>
+      </select>
+    </label>
+    <label>Acción:
+      <select id="selectAccion">
+        <option value="">N/A</option>
+        <option value="Se asiste a junta de inicio de turno">Junta</option>
+        <option value="Se valida Stencil">Stencil</option>
+        <option value="Se llena CheckList">CheckList</option>
+        <option value="Se pasan tarjetas Golden">Golden</option>
+        <option value="Cambio de modelo">Modelo</option>
+        <option value="Cambio de lado">Lado</option>
+        <option value="Tarjeta Atorada">Atorada</option>
+        <option value="Se hace Debug">Debug</option>
+        <option value="Problema de Flujo">Flujo</option>
+        <option value="Máquina fallando">Fallando</option>
+        <option value="Máquina funcionando">Funcionando</option>
+        <option value="Se asiste a junta de MRB">MRB</option>
+        <option value="Se entrega turno">Turno</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </label>
+    <input type="text" id="accionOtro" placeholder="Especificar acción...">
+  </div>
+
+  <div class="controls">
+    <textarea id="commentText" placeholder="Escribe tu comentario aquí..."></textarea>
+  </div>
+
+  <div class="controls">
+    <button id="salidaBtn" class="btn warn">Salida comedor</button>
+    <button id="regresoBtn" class="btn alt">Regreso comedor</button>
+    <button id="exportBtn" class="btn">Exportar JSON</button>
+    <button id="exportCsvBtn" class="btn alt">Exportar CSV</button>
+    
+    <button id="sendToReportBtn" class="btn purple">Generar Reporte HxH</button>
+    
+    <button id="importBtn" class="btn alt">Importar JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none;">
+    <button id="toggleHoraBtn" class="btn">Mostrar horas</button>
+    <button id="clearAllBtn" class="btn danger">Limpiar todo</button>
+  </div>
+
+  <div class="controls">
+    <label>Tipo de hora:
+      <select id="horaTipo">
+        <option value="actual">Hora actual</option>
+        <option value="retro">Hora retroactiva</option>
+      </select>
+    </label>
+    <label>Hora retroactiva:
+      <input id="retroTime" type="time" disabled>
+    </label>
+    <button id="addRetroBtn" class="btn">Añadir</button>
+  </div>
+
+  <div id="turnosContainer"></div>
 </div>
 
-<div class="controls">
-  <label>Piso:
-    <select id="selectPiso">
-      <option value="">N/A</option>
-      <option value="P1">1</option>
-      <option value="P2">2</option>
-    </select>
-  </label>
-  <label>Máquina:
-    <select id="selectMaquina">
-      <option value="">N/A</option>
-      <option value="PreAOI">PreAOI</option>
-      <option value="PAOI">PAOI</option>
-      <option value="DAOI">DAOI</option>
-      <option value="SPI">SPI</option>
-      <option value="AOI">AOI</option>
-      <option value="5DX">5DX</option>
-    </select>
-  </label>
-  <label>Línea:
-    <select id="selectLinea">
-      <option value="">N/A</option>
-    </select>
-  </label>
-  <label>Acción:
-    <select id="selectAccion">
-      <option value="">N/A</option>
-      <option value="Se asiste a junta de inicio de turno">Junta</option>
-      <option value="Se valida Stencil">Stencil</option>
-      <option value="Se llena CheckList">CheckList</option>
-      <option value="Se pasan tarjetas Golden">Golden</option>
-      <option value="Cambio de modelo">Modelo</option>
-      <option value="Cambio de lado">Lado</option>
-      <option value="Tarjeta Atorada">Atorada</option>
-      <option value="Se hace Debug">Debug</option>
-      <option value="Problema de Flujo">Flujo</option>
-      <option value="Máquina fallando">Fallando</option>
-      <option value="Máquina funcionando">Funcionando</option>
-      <option value="Se asiste a junta de MRB">MRB</option>
-      <option value="Se entrega turno">Turno</option>
-      <option value="Otro">Otro</option>
-    </select>
-  </label>
-  <input type="text" id="accionOtro" placeholder="Especificar acción...">
-</div>
+<div id="tab-reporte" class="tab-content">
+  <div class="hxh-container">
+    <h2 class="hxh-title">Generador de Reporte HxH</h2>
+    
+    <div class="file-upload-wrapper">
+        <label for="fileInput" style="font-weight:bold; display:block; margin-bottom:10px;">
+            📂 Selecciona tu archivo JSON (Opcional):
+        </label>
+        <input type="file" id="fileInput" accept=".json">
+        <p id="errorMsg" class="error-msg"></p>
+    </div>
 
-<div class="controls">
-  <textarea id="commentText" placeholder="Escribe tu comentario aquí..."></textarea>
-</div>
+    <button id="btn-copiar" onclick="copiarReporte()">📋 Copiar Reporte al Portapapeles</button>
 
-<div class="controls">
-  <button id="salidaBtn" class="btn warn">Salida comedor</button>
-  <button id="regresoBtn" class="btn alt">Regreso comedor</button>
-  <button id="exportBtn" class="btn">Exportar JSON</button>
-  <button id="exportCsvBtn" class="btn alt">Exportar CSV</button> 
-  <button id="importBtn" class="btn alt">Importar JSON</button>
-  <input type="file" id="importFile" accept=".json" style="display:none;">
-  <button id="toggleHoraBtn" class="btn">Mostrar horas</button>
-  <button id="clearAllBtn" class="btn danger">Limpiar todo</button>
+    <div id="resultadoVisual" class="reporte-container"></div>
+  </div>
 </div>
-
-<div class="controls">
-  <label>Tipo de hora:
-    <select id="horaTipo">
-      <option value="actual">Hora actual</option>
-      <option value="retro">Hora retroactiva</option>
-    </select>
-  </label>
-  <label>Hora retroactiva:
-    <input id="retroTime" type="time" disabled>
-  </label>
-  <button id="addRetroBtn" class="btn">Añadir</button>
-</div>
-
-<div id="turnosContainer"></div>
 
 <script>
+/* ----------------------------------------------------
+   LOGICA GLOBAL: PESTAÑAS
+   ---------------------------------------------------- */
+function switchTab(tabName) {
+    // Ocultar todo
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    
+    // Mostrar seleccionado
+    document.getElementById('tab-' + tabName).classList.add('active');
+    
+    // Activar botón
+    const btns = document.querySelectorAll('.tab-btn');
+    if(tabName === 'registro') btns[0].classList.add('active');
+    else btns[1].classList.add('active');
+}
+
+/* ----------------------------------------------------
+   LOGICA GLOBAL: REPORTE HxH
+   ---------------------------------------------------- */
+let textoParaCopiar = "";
+
+// Función pública para generar reporte desde datos directos
+window.generarReporteHxH = function(datos) {
+    const divResultado = document.getElementById('resultadoVisual');
+    const btnCopiar = document.getElementById('btn-copiar');
+    const errorMsg = document.getElementById('errorMsg');
+
+    // Limpiar interfaz
+    divResultado.innerHTML = "";
+    errorMsg.innerText = "";
+    textoParaCopiar = "";
+    
+    if (!Array.isArray(datos)) {
+        errorMsg.innerText = "Error: Los datos no son válidos.";
+        return;
+    }
+
+    if(datos.length === 0) {
+       errorMsg.innerText = "No hay registros para mostrar en esta fecha.";
+       btnCopiar.style.display = "none";
+       return;
+    }
+
+    // 1. Ordenar por timestamp
+    datos.sort((a, b) => a.timestamp - b.timestamp);
+
+    // 2. Agrupar por hora
+    const grupos = {};
+    datos.forEach(item => {
+        const fecha = new Date(item.timestamp);
+        const hora = fecha.getHours();
+        const etiquetaHora = `${hora}:00 a ${hora + 1}:00`;
+
+        if (!grupos[etiquetaHora]) { grupos[etiquetaHora] = []; }
+
+        let contextoTags = [];
+        if (item.linea) contextoTags.push(`L${item.linea}`);
+        if (item.maquina) contextoTags.push(item.maquina);
+        
+        let partesTexto = [];
+        if (item.accion) partesTexto.push(item.accion);
+        if (item.text) partesTexto.push(item.text);
+        
+        let textoFinal = partesTexto.join(" - ");
+        if (!textoFinal.trim()) textoFinal = "Registro sin detalle";
+
+        grupos[etiquetaHora].push({ tags: contextoTags, texto: textoFinal });
+    });
+
+    // 3. Renderizar
+    for (const [rango, actividades] of Object.entries(grupos)) {
+        // HTML Visual
+        const bloque = document.createElement('div');
+        bloque.className = 'hora-bloque';
+        
+        const titulo = document.createElement('div');
+        titulo.className = 'hora-titulo';
+        titulo.innerText = rango;
+        bloque.appendChild(titulo);
+
+        const lista = document.createElement('ul');
+        lista.className = 'actividad-lista';
+
+        actividades.forEach(act => {
+            const li = document.createElement('li');
+            li.className = 'actividad-item';
+            let htmlTags = "";
+            if (act.tags.length > 0) {
+                htmlTags = `<span class="tag">[${act.tags.join('-')}]</span>`;
+            }
+            li.innerHTML = `${htmlTags} ${act.texto}`;
+            lista.appendChild(li);
+        });
+
+        bloque.appendChild(lista);
+        divResultado.appendChild(bloque);
+
+        // Texto Plano para Copiar
+        textoParaCopiar += `${rango}\n`;
+        actividades.forEach(act => {
+            let prefix = act.tags.length > 0 ? `[${act.tags.join('-')}] ` : "";
+            textoParaCopiar += `${prefix}${act.texto}\n`;
+        });
+        textoParaCopiar += `\n`; 
+    }
+
+    if (Object.keys(grupos).length > 0) {
+        btnCopiar.style.display = "block";
+    }
+}
+
+function copiarReporte() {
+    if (!textoParaCopiar) return;
+    navigator.clipboard.writeText(textoParaCopiar).then(() => {
+        const btn = document.getElementById('btn-copiar');
+        const originalText = btn.innerText;
+        btn.innerText = "¡Copiado Exitosamente!";
+        btn.style.backgroundColor = "#155724";
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.backgroundColor = "#28a745";
+        }, 2000);
+    }).catch(err => { alert("Error al copiar manual: " + err); });
+}
+
+// Carga de archivo manual en la pestaña reporte
+document.getElementById('fileInput').addEventListener('change', function(evento) {
+    const archivo = evento.target.files[0];
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = function(e) {
+        try {
+            const json = JSON.parse(e.target.result);
+            window.generarReporteHxH(json);
+        } catch (error) {
+            document.getElementById('errorMsg').innerText = "Error: JSON inválido.";
+        }
+    };
+    lector.readAsText(archivo);
+});
+
+/* ----------------------------------------------------
+   LOGICA DEL REGISTRO (IIFE ORIGINAL + MODIFICACIONES)
+   ---------------------------------------------------- */
 (function(){
   const datePicker=document.getElementById("datePicker");
   const turnoSelector=document.getElementById("turnoSelector");
@@ -140,8 +413,11 @@
   const salidaBtn=document.getElementById("salidaBtn");
   const regresoBtn=document.getElementById("regresoBtn");
   const exportBtn=document.getElementById("exportBtn");
-  // NUEVA CONSTANTE: Botón Exportar CSV
   const exportCsvBtn=document.getElementById("exportCsvBtn");
+  
+  /* NUEVO: Botón enviar a reporte */
+  const sendToReportBtn=document.getElementById("sendToReportBtn");
+  
   const importBtn=document.getElementById("importBtn");
   const importFile=document.getElementById("importFile");
   const clearAllBtn=document.getElementById("clearAllBtn");
@@ -157,10 +433,10 @@
 
   const prefix="registro_turnos_";
   let mostrarHoras=false;
+
   function isoDate(d){return d.toISOString().slice(0,10);}
   datePicker.value=isoDate(new Date());
-  horaTipo.onchange=function(){ retroTime.disabled = horaTipo.value!=="retro";
-  }
+  horaTipo.onchange=function(){ retroTime.disabled = horaTipo.value!=="retro"; }
 
   function storageKey(dateStr){return prefix+dateStr;}
   function loadData(dateStr){return JSON.parse(localStorage.getItem(storageKey(dateStr))||"[]");}
@@ -173,7 +449,6 @@
     return 3;
   }
 
-  // Dependencia Piso -> Linea
   selectPiso.onchange=function(){
     selectLinea.innerHTML="";
     const opt=document.createElement("option");
@@ -195,7 +470,6 @@
     }
   };
 
-  // Mostrar input si accion=Otro
   selectAccion.onchange=function(){
     accionOtro.style.display = (selectAccion.value==="Otro") ? "inline-block" : "none";
   };
@@ -238,7 +512,6 @@
           const d=new Date(c.timestamp);
           const h=d.getHours();
           const bloque=`${String(h).padStart(2,"0")}:00 - ${String(h+1).padStart(2,"0")}:00`;
-     
           if(!bloques[bloque]) bloques[bloque]=[];
           bloques[bloque].push(c);
         });
@@ -249,18 +522,15 @@
           div.appendChild(sep);
           bloques[b].forEach(c=>{
             const cdiv=document.createElement("div");
-    
             cdiv.className="comment";
             const hora=new Date(c.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
             let info="";
             if(c.piso || c.maquina || c.linea || c.accion){
-              info=`<span class="info">[Piso:${c.piso||'N/A'} |
-Máq:${c.maquina||'N/A'} | L:${c.linea||'N/A'} | Acc:${c.accion||'N/A'}]</span>`;
+              info=`<span class="info">[Piso:${c.piso||'N/A'} | Máq:${c.maquina||'N/A'} | L:${c.linea||'N/A'} | Acc:${c.accion||'N/A'}]</span>`;
             }
             cdiv.innerHTML=`<div class="comment-left">
                                ${info}${c.text}
                                <span class="hora ${mostrarHoras?"visible":""}"> (${hora})</span>
-                 
                             </div>
                              <button class="del-btn" onclick="window.__del('${dateStr}',${c.id})">❌</button>`;
             div.appendChild(cdiv);
@@ -280,8 +550,7 @@ Máq:${c.maquina||'N/A'} | L:${c.linea||'N/A'} | Acc:${c.accion||'N/A'}]</span>`
     if(horaTipo.value==="actual"){
       fechaHora=new Date();
     }else{
-      if(!retroTime.value){alert("Selecciona hora retroactiva");
-      return;}
+      if(!retroTime.value){alert("Selecciona hora retroactiva"); return;}
       const [h,m]=retroTime.value.split(":").map(Number);
       fechaHora=new Date(datePicker.value+"T00:00:00");
       fechaHora.setHours(h,m);
@@ -294,8 +563,7 @@ Máq:${c.maquina||'N/A'} | L:${c.linea||'N/A'} | Acc:${c.accion||'N/A'}]</span>`
   exportBtn.onclick=function(){
     const dateStr=datePicker.value;
     const data=loadData(dateStr);
-    if(!data.length){alert("No hay datos para exportar");
-    return;}
+    if(!data.length){alert("No hay datos para exportar"); return;}
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
@@ -304,41 +572,23 @@ Máq:${c.maquina||'N/A'} | L:${c.linea||'N/A'} | Acc:${c.accion||'N/A'}]</span>`
     URL.revokeObjectURL(url);
   };
 
-  // NUEVA FUNCIÓN: Exportación a CSV
   exportCsvBtn.onclick=function(){
     const dateStr=datePicker.value;
     const data=loadData(dateStr);
     if(!data.length){alert("No hay datos para exportar"); return;}
-
-    // Encabezados del CSV
     const headers = ["Fecha","Hora","Turno","Piso","Maquina","Linea","Accion","Comentario"];
-    
-    // Mapear los datos al formato CSV
     const csvContent = data.map(item => {
         const d = new Date(item.timestamp);
-        // Formatear la fecha y hora
         const datePart = d.toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' });
         const timePart = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-
-        // Escapar comillas dobles y asegurarse de que el texto no contenga comas que rompan el CSV
         const escape = (text) => `"${String(text).replace(/"/g, '""')}"`;
-
         return [
-            escape(datePart),
-            escape(timePart),
-            escape(item.turno),
-            escape(item.piso || 'N/A'),
-            escape(item.maquina || 'N/A'),
-            escape(item.linea || 'N/A'),
-            escape(item.accion || 'N/A'),
-            escape(item.text)
+            escape(datePart), escape(timePart), escape(item.turno),
+            escape(item.piso || 'N/A'), escape(item.maquina || 'N/A'),
+            escape(item.linea || 'N/A'), escape(item.accion || 'N/A'), escape(item.text)
         ].join(',');
     }).join('\n');
-
-    // Combinar encabezados y contenido
     const csv = headers.join(',') + '\n' + csvContent;
-
-    // Crear y descargar el archivo Blob
     const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
@@ -346,20 +596,32 @@ Máq:${c.maquina||'N/A'} | L:${c.linea||'N/A'} | Acc:${c.accion||'N/A'}]</span>`
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-  // FIN NUEVA FUNCIÓN CSV
-
-  importBtn.onclick=function(){ importFile.click();
+  
+  /* LOGICA NUEVA: ENVIAR DATOS DIRECTOS A REPORTE HxH */
+  sendToReportBtn.onclick=function(){
+      const dateStr=datePicker.value;
+      const data=loadData(dateStr);
+      
+      // Llamar a la función global del reporte
+      window.generarReporteHxH(data);
+      
+      // Cambiar de pestaña
+      switchTab('reporte');
   };
+
+  importBtn.onclick=function(){ importFile.click(); };
   importFile.onchange=function(e){
     const file=e.target.files[0]; if(!file) return;
     const reader=new FileReader();
     reader.onload=function(ev){
       try{const data=JSON.parse(ev.target.result);
-      saveData(datePicker.value,data); render();}
+      saveData(datePicker.value,data);
+      render();}
       catch(err){alert("Archivo JSON inválido");}
     };
     reader.readAsText(file); importFile.value="";
   };
+  
   clearAllBtn.onclick=function(){
     if(confirm("¿Seguro que quieres borrar todo el registro de este día?")){
       localStorage.removeItem(storageKey(datePicker.value));
