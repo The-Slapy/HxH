@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador HxH (Importar Archivo)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f8;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h2 { text-align: center; color: #2c3e50; margin-top: 0; }
+
+        /* Estilos del botón de archivo */
+        .file-upload-wrapper {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            background-color: #f0f8ff;
+        }
+
+        input[type="file"] {
+            font-size: 16px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        #btn-copiar {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            display: none; /* Oculto por defecto */
+            width: 100%;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        #btn-copiar:hover { background-color: #218838; }
+
+        /* Estilos del reporte visual */
+        .reporte-container {
+            margin-top: 25px;
+        }
+        .hora-bloque {
+            margin-bottom: 20px;
+            background-color: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .hora-titulo {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .actividad-lista {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .actividad-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: baseline;
+        }
+        .actividad-item:last-child { border-bottom: none; }
+
+        /* Etiquetas para Maquina/Linea */
+        .tag {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-right: 8px;
+            white-space: nowrap;
+        }
+
+        .error-msg { color: #d9534f; font-weight: bold; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Generador de Reporte HxH</h2>
+
+    <div class="file-upload-wrapper">
+        <label for="fileInput" style="font-weight:bold; display:block; margin-bottom:10px;">
+            📂 Selecciona tu archivo JSON:
+        </label>
+        <input type="file" id="fileInput" accept=".json">
+        <p id="errorMsg" class="error-msg"></p>
+    </div>
+
+    <button id="btn-copiar" onclick="copiarReporte()">📋 Copiar Reporte al Portapapeles</button>
+
+    <div id="resultadoVisual" class="reporte-container"></div>
+</div>
+
+<script>
+    let textoParaCopiar = "";
+
+    // Escuchar cuando el usuario selecciona un archivo
+    document.getElementById('fileInput').addEventListener('change', function(evento) {
+        const archivo = evento.target.files[0];
+        if (!archivo) return;
+
+        const lector = new FileReader();
+
+        // Cuando el archivo se termine de leer...
+        lector.onload = function(e) {
+            const contenido = e.target.result;
+            try {
+                const json = JSON.parse(contenido);
+                generarReporte(json); // Llamamos a la función principal
+            } catch (error) {
+                document.getElementById('errorMsg').innerText = "Error: El archivo no es un JSON válido.";
+                console.error(error);
+            }
+        };
+
+        // Leer el archivo como texto
+        lector.readAsText(archivo);
+    });
+
+    function generarReporte(datos) {
+        const divResultado = document.getElementById('resultadoVisual');
+        const btnCopiar = document.getElementById('btn-copiar');
+        const errorMsg = document.getElementById('errorMsg');
+
+        // Limpiar interfaz
+        divResultado.innerHTML = "";
+        errorMsg.innerText = "";
+        textoParaCopiar = "";
+
+        // Validar que sea una lista
+        if (!Array.isArray(datos)) {
+            errorMsg.innerText = "El JSON debe ser una lista de registros [...]";
+            return;
+        }
+
+        // 1. Ordenar por timestamp
+        datos.sort((a, b) => a.timestamp - b.timestamp);
+
+        // 2. Agrupar por hora
+        const grupos = {};
+
+        datos.forEach(item => {
+            const fecha = new Date(item.timestamp);
+            const hora = fecha.getHours();
+            const etiquetaHora = `${hora}:00 a ${hora + 1}:00`;
+
+            if (!grupos[etiquetaHora]) {
+                grupos[etiquetaHora] = [];
+            }
+
+            // Construir descripción
+            let contextoTags = [];
+            if (item.piso) contextoTags.push(item.piso);
+            if (item.linea) contextoTags.push(item.linea);
+            if (item.maquina) contextoTags.push(item.maquina);
+
+            // Texto principal
+            let partesTexto = [];
+            if (item.accion) partesTexto.push(item.accion);
+            if (item.text) partesTexto.push(item.text);
+
+            let textoFinal = partesTexto.join(" - ");
+            if (!textoFinal.trim()) textoFinal = "Registro sin detalle";
+
+            // Guardamos objeto para procesar visual y texto por separado
+            grupos[etiquetaHora].push({
+                tags: contextoTags,
+                texto: textoFinal
+            });
+        });
+
+        // 3. Renderizar
+        for (const [rango, actividades] of Object.entries(grupos)) {
+
+            // --- A. HTML Visual ---
+            const bloque = document.createElement('div');
+            bloque.className = 'hora-bloque';
+
+            const titulo = document.createElement('div');
+            titulo.className = 'hora-titulo';
+            titulo.innerText = rango;
+            bloque.appendChild(titulo);
+
+            const lista = document.createElement('ul');
+            lista.className = 'actividad-lista';
+
+            actividades.forEach(act => {
+                const li = document.createElement('li');
+                li.className = 'actividad-item';
+
+                // Crear etiquetas visuales (L18, SPI, etc)
+                let htmlTags = "";
+                if (act.tags.length > 0) {
+                    htmlTags = `<span class="tag">[${act.tags.join('-')}]</span>`;
+                }
+
+                li.innerHTML = `${htmlTags} ${act.texto}`;
+                lista.appendChild(li);
+            });
+
+            bloque.appendChild(lista);
+            divResultado.appendChild(bloque);
+
+            // --- B. Texto Plano para Copiar ---
+            textoParaCopiar += `${rango}\n`;
+            actividades.forEach(act => {
+                let prefix = act.tags.length > 0 ? `[${act.tags.join('-')}] ` : "";
+                textoParaCopiar += `${prefix}${act.texto}\n`;
+            });
+            textoParaCopiar += `\n`;
+        }
+
+        // Mostrar botón de copiar si hay datos
+        if (Object.keys(grupos).length > 0) {
+            btnCopiar.style.display = "block";
+        } else {
+            errorMsg.innerText = "El JSON está vacío o no tiene datos procesables.";
+        }
+    }
+
+    function copiarReporte() {
+        if (!textoParaCopiar) return;
+
+        navigator.clipboard.writeText(textoParaCopiar).then(() => {
+            const btn = document.getElementById('btn-copiar');
+            const originalText = btn.innerText;
+            btn.innerText = "¡Copiado Exitosamente!";
+            btn.style.backgroundColor = "#155724";
+
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.backgroundColor = "#28a745";
+            }, 2000);
+        }).catch(err => {
+            alert("Error al copiar manual: " + err);
+        });
+    }
+</script>
+
+</body>
+</html>
