@@ -61,6 +61,17 @@
   .hora-block{margin:8px 0;font-weight:bold;color:#374151;}
   .del-btn{background:#ef4444;color:white;border:none;border-radius:4px;padding:6px 8px;cursor:pointer;}
   #accionOtro{display:none;}
+
+  /* NUEVO ESTILO VISUALIZADOR DE ACCIÓN */
+  .visualizer {
+      margin-left: 10px;
+      color: var(--primary); 
+      font-weight: normal;
+      font-size: 14px;
+      display: inline-block;
+      padding: 0 5px;
+      max-width: 300px; /* Limitar el ancho para que no desborde */
+  }
   
   #turnosContainer{
     max-height: calc(100vh - 250px);
@@ -165,8 +176,8 @@
     <label>Piso:
       <select id="selectPiso">
         <option value="">N/A</option>
-        <option value="P1">1</option>
-        <option value="P2">2</option>
+        <option value="P1">P1</option>
+        <option value="P2">P2</option>
       </select>
     </label>
     <label>Máquina:
@@ -203,6 +214,7 @@
         <option value="Se entrega turno">Turno</option>
         <option value="Otro">Otro</option>
       </select>
+      <span id="accionVisualizer" class="visualizer"></span>
     </label>
     <input type="text" id="accionOtro" placeholder="Especificar acción...">
   </div>
@@ -292,6 +304,7 @@ window.generarReporteHxH = function(datos) {
     divResultado.innerHTML = "";
     errorMsg.innerText = "";
     textoParaCopiar = "";
+    btnCopiar.style.display = "none";
     
     if (!Array.isArray(datos)) {
         errorMsg.innerText = "Error: Los datos no son válidos.";
@@ -300,7 +313,6 @@ window.generarReporteHxH = function(datos) {
 
     if(datos.length === 0) {
        errorMsg.innerText = "No hay registros para mostrar en esta fecha.";
-       btnCopiar.style.display = "none";
        return;
     }
 
@@ -429,6 +441,7 @@ document.getElementById('fileInput').addEventListener('change', function(evento)
   const selectLinea=document.getElementById("selectLinea");
   const selectAccion=document.getElementById("selectAccion");
   const accionOtro=document.getElementById("accionOtro");
+  const accionVisualizer=document.getElementById("accionVisualizer"); /* NUEVO ELEMENTO */
   const toggleHoraBtn=document.getElementById("toggleHoraBtn");
 
   const prefix="registro_turnos_";
@@ -454,15 +467,15 @@ document.getElementById('fileInput').addEventListener('change', function(evento)
     const opt=document.createElement("option");
     opt.value=""; opt.textContent="N/A"; 
     selectLinea.appendChild(opt);
-    if(selectPiso.value==="1"){
-      ["17A","17B","18","19"].forEach(l=>{
+    if(selectPiso.value==="P1"){
+      ["L17A","L17B","L18","L19"].forEach(l=>{
         const o=document.createElement("option");
         o.value=l; o.textContent=l;
         selectLinea.appendChild(o);
       });
     }
-    else if(selectPiso.value==="2"){
-      ["22","23"].forEach(l=>{
+    else if(selectPiso.value==="P2"){
+      ["L22","L23"].forEach(l=>{
         const o=document.createElement("option");
         o.value=l; o.textContent=l;
         selectLinea.appendChild(o);
@@ -470,9 +483,37 @@ document.getElementById('fileInput').addEventListener('change', function(evento)
     }
   };
 
-  selectAccion.onchange=function(){
-    accionOtro.style.display = (selectAccion.value==="Otro") ? "inline-block" : "none";
+  /* MAPA DE DESCRIPCIONES PARA EL VISUALIZADOR */
+  const accionDescriptions = {
+    "": "Selecciona una acción para ver su descripción.",
+    "Se asiste a junta de inicio de turno": "Se asiste a junta de inicio de turno",
+    "Se valida Stencil": "Se valida Stencil",
+    "Se llena CheckList": "Se llena CheckList",
+    "Se pasan tarjetas Golden": "Se pasan tarjetas Golden",
+    "Cambio de modelo": "Cambio de modelo",
+    "Cambio de lado": "Cambio de lado",
+    "Tarjeta Atorada": "Tarjeta Atorada",
+    "Se hace Debug": "Se hace Debug",
+    "Problema de Flujo": "Problema de Flujo",
+    "Máquina fallando": “Máquina fallando",
+    "Máquina funcionando": "Máquina funcionando",
+    "Se asiste a junta de MRB": "Se asiste a junta de MRB",
+    "Se entrega turno": "Se entrega turno",
+    "Otro": "Escribe una descripción específica para esta acción."
   };
+
+  selectAccion.onchange=function(){
+    const selectedValue = selectAccion.value;
+    // Mostrar/ocultar input 'Otro'
+    accionOtro.style.display = (selectedValue==="Otro") ? "inline-block" : "none";
+    
+    // Actualizar el visualizador
+    const description = accionDescriptions[selectedValue] || "Descripción no disponible.";
+    accionVisualizer.textContent = description;
+  };
+  
+  // Llamar al inicio para mostrar el mensaje inicial
+  selectAccion.onchange(); 
 
   function guardar(texto, fechaHora, omitirInfo=false){
     const dateStr=datePicker.value;
