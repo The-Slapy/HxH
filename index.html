@@ -329,6 +329,7 @@ window.generarReporteHxH = function(datos) {
         if (!grupos[etiquetaHora]) { grupos[etiquetaHora] = []; }
 
         let contextoTags = [];
+        if (item.piso) contextoTags.push(`L${item.piso}`);
         if (item.linea) contextoTags.push(`L${item.linea}`);
         if (item.maquina) contextoTags.push(item.maquina);
         
