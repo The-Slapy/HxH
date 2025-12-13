@@ -329,8 +329,8 @@ window.generarReporteHxH = function(datos) {
         if (!grupos[etiquetaHora]) { grupos[etiquetaHora] = []; }
 
         let contextoTags = [];
-        if (item.piso) contextoTags.push(`L${item.piso}`);
-        if (item.linea) contextoTags.push(`L${item.linea}`);
+        if (item.piso) contextoTags.push(item.piso);
+        if (item.linea) contextoTags.push(item.linea);
         if (item.maquina) contextoTags.push(item.maquina);
         
         let partesTexto = [];
@@ -469,7 +469,7 @@ document.getElementById('fileInput').addEventListener('change', function(evento)
     opt.value=""; opt.textContent="N/A"; 
     selectLinea.appendChild(opt);
     if(selectPiso.value==="P1"){
-      ["L17A","L17B","L18","L19"].forEach(l=>{
+      ["L17","L17A","L17B","L18","L19"].forEach(l=>{
         const o=document.createElement("option");
         o.value=l; o.textContent=l;
         selectLinea.appendChild(o);
