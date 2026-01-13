@@ -183,11 +183,11 @@
     <label>Máquina:
       <select id="selectMaquina">
         <option value="">N/A</option>
+        <option value="SPI">SPI</option>
         <option value="PreAOI">PreAOI</option>
+        <option value="AOI">AOI</option>
         <option value="PAOI">PAOI</option>
         <option value="DAOI">DAOI</option>
-        <option value="SPI">SPI</option>
-        <option value="AOI">AOI</option>
         <option value="5DX">5DX</option>
       </select>
     </label>
@@ -199,6 +199,7 @@
     <label>Acción:
       <select id="selectAccion">
         <option value="">N/A</option>
+        <option value="Se entrega Puesta Punto">PP</option>
         <option value="Se asiste a junta de inicio de turno">Junta</option>
         <option value="Se valida Stencil">Stencil</option>
         <option value="Se llena CheckList">CheckList</option>
@@ -469,7 +470,7 @@ document.getElementById('fileInput').addEventListener('change', function(evento)
     opt.value=""; opt.textContent="N/A"; 
     selectLinea.appendChild(opt);
     if(selectPiso.value==="P1"){
-      ["L17","L17A","L17B","L18","L19"].forEach(l=>{
+      ["L15A","L15B","L17","L18","L19"].forEach(l=>{
         const o=document.createElement("option");
         o.value=l; o.textContent=l;
         selectLinea.appendChild(o);
@@ -500,6 +501,7 @@ document.getElementById('fileInput').addEventListener('change', function(evento)
     "Máquina funcionando": "Máquina funcionando",
     "Se asiste a junta de MRB": "Se asiste a junta de MRB",
     "Se entrega turno": "Se entrega turno",
+    "Se entrega Puesta Punto": "Se entrega Puesta Punto",
     "Otro": "Escribe una descripción específica para esta acción."
   };
 
